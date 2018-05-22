@@ -28,13 +28,13 @@ module spinner_part(which="all") {
     translate([0,0,0*spacing - 10]) {
       color("purple") spinner_part("ring1c");
       spinner_electronics(pretty=true);
-      color("black") translate([0,0,-.5])
+      color("grey") translate([0,0,-.5])
         spinner_part("lid2");
     }
     translate([0,0,1*spacing - 5]) {
-      color("blue") spinner_part("ring1d");
+      color("blue") spinner_part("ring1b");
     }
-    translate([0,0,2*spacing]) {
+    translate([0,0,2*spacing - 5]) {
       color("green") spinner_part("ring3");
     }
     translate([0,0,3*spacing]) {
@@ -46,7 +46,7 @@ module spinner_part(which="all") {
     translate([0,0,5*spacing]) {
       color("red") spinner_part("ring1a");
       translate([0,0,0.5])
-      color("black") spinner_part("lid1");
+      color("grey") spinner_part("lid1");
     }
   }
   if (which=="insert") {
@@ -69,13 +69,14 @@ module spinner_part(which="all") {
   }
   if (which=="ring1d") {
     // internal ring, extra long (12-wire slip ring)
+    // XXX unused
     spinner_ring(label="0123456789", no_led=true, slip_ring_height=slip_ring_height + 5);
   }
   if (which=="ring2") {
     spinner_ring(label="0+−×÷+−×÷+−", no_led=true, slip_ring_height=slip_ring_height);
   }
-  if (which=="ring3") {
-    spinner_ring(label="0=>=<=>=<=>=<=", no_led=true, slip_ring_height=slip_ring_height);
+  if (which=="ring3") { // extra long (12-wire slip ring)
+    spinner_ring(label="0=>=<=>=<=>=<=", no_led=true, slip_ring_height=slip_ring_height + 5);
   }
   if (which=="lid1") {
     spinner_lid1(); // lid for ring1a
