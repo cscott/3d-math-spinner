@@ -3,9 +3,11 @@
 /* [Global] */
 
 // Which part.
-part = "all"; // [ring1a, ring1b, ring1c, ring1d, ring2, ring3, insert, lid1, lid2]
+part = "all"; // [ring1a, ring1b, ring1c, ring1d, ring2, ring3, insert, lid1, lid2, lid2a, lid2b]
 
 /* [Hidden] */
+function inch() = 25.4;
+
 function ring_outer_diam() = 80;
 function neopixel_led_height() = 8.7 - 1.0/*shoulder*/;
 function pcb_size() = [40,48];
@@ -13,8 +15,8 @@ function lid1_thick() = 1.5;
 function lid2_thick() = 1.5;
 function lid2_wall_thick() = neopixel_led_height() - 1; // let 1mm protrude
 function lid2_screw_foot() = 9;
-function screw_4_40_tap() = 2.1844; // 0.0860 tap drill for 4-40 screw
-function screw_4_40_clearance() = .1285 * 25.4; // clearance drill for 4-40
+function screw_4_40_tap() = 0.0860*inch(); // tap drill for 4-40 screw
+function screw_4_40_clearance() = .1285 * inch(); // clearance drill for 4-40
 function clearance() = 0.25;
 $fn=50;
 
@@ -83,6 +85,18 @@ module spinner_part(which="all") {
   }
   if (which=="lid2") {
     spinner_lid2(); // lid for ring1c
+  }
+  if (which=="lid2a" || which=="lid2b") {
+    // split lid2 in half so we can get highest quality print on text side
+    split_plane = 0.6;
+    intersection() {
+      spinner_lid2();
+      translate([0,0,-lid2_thick()+split_plane]) scale([1,1,which=="lid2a"?1:-1])
+        translate([0,0,50]) cube([100,100,100], center=true);
+    }
+  }
+  if (which=="shim") {
+    cube([12,12,0.4]);
   }
   if (which=="ring-test") {
     intersection() {
@@ -230,8 +244,8 @@ module spinner_ring(ring_outer_diam=ring_outer_diam(), slip_ring_height=17.3, la
       // pcb cutout
       translate([0, 0, slip_ring_height + slip_ring_clearance - pcb_clearance]){
         difference() {
-          translate([-pcb_size.x/2, -pcb_size.y/2, 0])
-            cube([pcb_size.x, pcb_size.y, pcb_clearance + epsilon]);
+          translate([-pcb_size.x/2 - cl, -pcb_size.y/2 - cl, 0])
+            cube([pcb_size.x + 2*cl, pcb_size.y + 2*cl, pcb_clearance + epsilon]);
           if (!no_feet) for (i=[1,-1]) for (j=[-1,1]) scale([i,j,1])
             translate([-pcb_size.x/2 + standoff_offset,
                        -pcb_size.y/2 + standoff_offset,
@@ -298,6 +312,9 @@ module spinner_ring(ring_outer_diam=ring_outer_diam(), slip_ring_height=17.3, la
                      epsilon + (slip_ring_height + slip_ring_clearance)
                      -alignment_depth])
             cylinder(d=10, h=100);
+          // power switch support
+          rotate([0,0,-1.5*36]) translate([0,-30.5,epsilon])
+            cylinder(d=12-epsilon,h=slip_ring_height+slip_ring_clearance);
         }
         rotate([0,0,18])
         translate([0,ring_outer_diam/2 - alignment_hole_offset,
@@ -321,6 +338,7 @@ module spinner_lid1(ring_outer_diam=ring_outer_diam(), slip_ring_height=17.3, cl
   pcb_size = pcb_size();
   standoff_offset = 4; // XXX copied from above
   screw_diam = screw_4_40_clearance();
+  letter_deep = 0.75;
   epsilon = .1;
   cl = clearance;
 
@@ -339,6 +357,11 @@ module spinner_lid1(ring_outer_diam=ring_outer_diam(), slip_ring_height=17.3, cl
           cylinder(d=screw_diam+2*cl, h=lid_thick+2*epsilon, $fn=48);
         }
       }
+      // Z for zachary
+      translate([0,0,lid_thick]) rotate([0*180,0,-1.5*36])
+        linear_extrude(height=2*letter_deep, center=true)
+        text(text="Z", size=25, halign="center", valign="center",
+             font="Lato:style=Bold");
     }
   }
 }
@@ -356,7 +379,7 @@ module spinner_lid2(ring_outer_diam=ring_outer_diam(), clearance=clearance()) {
     spinner_lid2_screws(ring_outer_diam=ring_outer_diam,
                         d=screw_4_40_clearance());
     // hollow out a place for the power switch
-    spinner_electronics(extra=clearance, pretty=false);
+    spinner_electronics(extra=clearance, pretty=false, labels=true);
   }
   difference() {
     union() {
@@ -374,14 +397,14 @@ module spinner_lid2(ring_outer_diam=ring_outer_diam(), clearance=clearance()) {
           cylinder(d=ring_outer_diam - 2*outer_wall_thick - 2*cl - 2*lid_thick,
                    h=2*epsilon + 10, $fn=10);
         for (i=[0:4]) rotate([0,0,i*36])
-          cube([7,ring_outer_diam,10], center=true);
+          cube([7.5,ring_outer_diam,10], center=true);
       }
       translate([4,0,0])
       cube([9,55,3*epsilon + 12], center=true);
       translate([12,0,0])
         cube([32,40,3*epsilon + 12], center=true);
     }
-    spinner_electronics(extra=clearance, pretty=false);
+    spinner_electronics(extra=clearance, pretty=false, lid=true);
     spinner_lid2_screws(ring_outer_diam=ring_outer_diam,
                         d=lid2_screw_foot() + 2*cl);
   }
@@ -400,11 +423,16 @@ module spinner_lid2_screws(ring_outer_diam=ring_outer_diam(), d=screw_4_40_tap()
       cylinder(d=d, h=100);
 }
 
-module spinner_electronics(extra=0, pretty=false) {
+module spinner_electronics(extra=0, slip_ring_height=17.3, extra_height=5, clearance=clearance(), pretty=false, labels=false, lid=false) {
+  // copied from params for ring1c
+  slip_ring_clearance = 3 + extra_height;
+  total_thick = slip_ring_height + slip_ring_clearance;
   lid_thick = lid2_thick();
+  z_letter_deep = 0.75;
+  letter_deep = 0.4;
   epsilon = .1;
+  cl = clearance;
 
-  // attach these to the lid with double-sided tape
   translate([0,0,20.3+5+15-29]) {
     // slip ring
     color("grey") cylinder(d=12.5+2*extra,h=29);
@@ -412,34 +440,88 @@ module spinner_electronics(extra=0, pretty=false) {
       translate([0,0,-3]) cylinder(d=12.5+2*extra,h=3); // wiring area
   }
   translate([-16-extra,-51/2-extra,0]) rotate([0,0,0]) {
+    usb_extra = lid ? 13 : 0;
     // feather 328p
     color("blue") cube([23+2*extra,51+2*extra,pretty ? 1.6 : (8+extra)]);
+    color("grey") translate([23/2-9/2,-usb_extra,0]) // usb connector
+      cube([9+2*extra,7+usb_extra+2*extra,4.3+1.6+extra]);
     %if (pretty)
       translate([0,0,1.6]) cube([23,51,8-1.6]);
-  }
-  translate([-2.5-extra,-36/2-extra,1.6])
-    // battery
-    color("red") cube([29+2*extra,36+2*extra,4.75+extra]);
-  rotate([0,0,-1.5 * 36]) translate([0,-30.5,-0.5]) rotate([0,0,-8]) {
-    // power switch
-    // XXX check how tall the "button" is.  we've got it behind 1mm of lid
-    // right now.
-    color("green") translate([-6-extra,-6-extra,0])
-      cube([12+2*extra,12+2*extra,6.8+extra]);
-    translate([0,0,-2-10*extra])
-    color("red") cylinder(d=5.4+2*extra, h=2.1+10*extra);
-  }
-  // screw holes for panel mount usb jack
-  //translate([-21.75,3.5,-lid_thick-epsilon]) rotate([0,0,0]) {
-  translate([-25,6,-lid_thick-epsilon]) rotate([0,0,-18]) {
-    jack_height = 10;
-    if (!pretty) for (i=[1,-1]) translate([0,9*i,0])
-      cylinder(d=screw_4_40_clearance() + 2*cl, h=lid_thick+2*epsilon);
-    // XXX CHECK THESE CUTOUT DIMENSIONS
-    color("brown") {
-    cube([4,10,2*(lid_thick+2*epsilon)], center=true);
-    translate([0,0,1/*jack cutout depth*/+epsilon + (jack_height/2)])
-      cube([0.4*25.4,25.4,jack_height], center=true);
+    // mounting screws
+    translate([23/2 + extra, 51/2 + extra, -lid_thick-epsilon]) {
+      for (j=[1,-1]) {
+        if (j<0) translate([j*0.7*inch()/2,-1.8*inch()/2,0])
+          cylinder(d=0.1*inch()+2*cl, h = lid_thick + 8 + 2*epsilon);
+        translate([j*0.75*inch()/2,1.8*inch()/2,0])
+          cylinder(d=0.09*inch()+2*cl, h = lid_thick + 8 + 2*epsilon);
+      }
     }
   }
+  translate([-2.5-extra,-36/2-extra,1.6])
+    // battery (attach to the lid w/ double-sided tape)
+    color("red") cube([29+2*extra,36+2*extra,4.75+extra]);
+  // 5V power boost for LEDs
+  translate([0,-23,total_thick-1.7/*pcb_thick*/-21.65])
+  rotate([0,-90,-90]) translate([-2*extra,-28.3/2-extra,-5.4-extra]) {
+    color("purple") cube([21.65+10*extra,28.3+2*extra,5.4/*7 w/ JST*/+2*extra]);
+    // JST connector
+    translate([21.65/2-(extra>0?10:0),28.3-8.1,5.4-7])
+      cube([8+2*extra+(extra>0?10:0),8.1+2*extra,7+2*extra]);
+  }
+  // switch button is 2.6mm tall unpressed, 1mm pressed. So 0.6mm of lid
+  // thickness should be fine.
+  switch_inset = 0.6;
+  rotate([0,0,-1.5 * 36]) translate([0,-30.5,-lid_thick+switch_inset]) {
+    rotate([0,0,-8]) {
+    // power switch
+    color("green") translate([-6-extra,-6-extra,0])
+      cube([12+2*extra,12+2*extra,6.8+extra]);
+    translate([0,0,-2.6-10*extra])
+    color("red") cylinder(d=5.4+2*extra, h=2.6+10*extra+epsilon);
+    }
+    if (labels && false) {
+    translate([0,4.5,-switch_inset]) rotate([180,0,0])
+    linear_extrude(height=2*letter_deep, center=true)
+    text(text="POWER", size=3, halign="center", valign="top",
+         font="Lato:style=Bold");
+    }
+  }
+  // screw holes for panel mount usb jack
+  translate([-23.5,7.5,-lid_thick-epsilon]) rotate([0,0,-18]) {
+    jack_height = 5 + extra;
+    if (!pretty) for (i=[1,-1]) translate([0,9*i,0])
+      cylinder(d=screw_4_40_clearance() + 2*cl, h=lid_thick+2*epsilon);
+    color("brown") {
+      cube([4.3+cl*2,9+cl*2,2*(lid_thick+2*epsilon)], center=true);
+      // jack cutout depth is really 0.8, but we'll use 1mm for extra strength
+      translate([0,0,1/*jack cutout depth*/+epsilon]) {
+        translate([0,0,jack_height/2])
+          cube([7.8+extra,24.9+extra,jack_height], center=true);
+        translate([0,0,25.6/2 + extra/2])
+          cube([9.9+extra,11.25+extra,25.6 + extra], center=true);
+        if (extra>0) // XXX is this cutout necessary?
+          translate([0,-(11.25+2*extra)/2,10])
+          cube([20,11.25+2*extra,30]);
+      }
+    }
+    if (labels && false) {
+      translate([-4,0,epsilon]) rotate([180,0,-90])
+      linear_extrude(height=2*letter_deep, center=true)
+      text(text="CHARGE", size=3, halign="center", valign="bottom",
+           font="Lato:style=Bold");
+    }
+  }
+  // charge status LED (T-1, 3mm)
+  translate([16.75,-21.1,-lid_thick-0.6]) {
+    cylinder(d=4.4+2*cl, h=4.8);
+    translate([0,0,2.4-cl]) cylinder(d=5.15+2*cl, h=2.4+1/*extra*/);
+  }
+  // Z for zachary
+  if (labels) {
+    translate([0,0,-lid_thick]) rotate([180,0,-1.5*36])
+      linear_extrude(height=2*z_letter_deep, center=true)
+      text(text="Z", size=25, halign="center", valign="center",
+           font="Lato:style=Bold");
+  }
+  // snap brackets for power switch?
 }
