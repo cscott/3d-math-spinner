@@ -3,7 +3,7 @@
 /* [Global] */
 
 // Which part.
-part = "all"; // [ring1a, ring1b, ring1c, ring1d, ring2, ring3, insert, lid1, lid2, lid2a, lid2b]
+part = "all"; // [ring1a, ring1b, ring1c, ring2, ring3, insert, lid1, lid2]
 
 /* [Hidden] */
 function inch() = 25.4;
@@ -68,11 +68,6 @@ module spinner_part(which="all") {
   }
   if (which=="ring1c") {
     spinner_ring(label="0123456789", no_led=true, no_switch=true, extra_height=5, slip_ring_height=slip_ring_height);
-  }
-  if (which=="ring1d") {
-    // internal ring, extra long (12-wire slip ring)
-    // XXX unused
-    spinner_ring(label="0123456789", no_led=true, slip_ring_height=slip_ring_height + 5);
   }
   if (which=="ring2") {
     spinner_ring(label="0+−×÷+−×÷+−", no_led=true, slip_ring_height=slip_ring_height);
