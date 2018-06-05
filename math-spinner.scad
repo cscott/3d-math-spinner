@@ -210,6 +210,7 @@ module spinner_ring(ring_outer_diam=ring_outer_diam(), slip_ring_height=17.3, la
           cylinder(d=alignment_hole_foot_diam + 2*cl, h=pcb_clearance+epsilon);
           translate([0,0,-9])
             cylinder(d=alignment_hole_head_diam + 2*cl, h=10);
+          for (i=[0,-18]) rotate([0,0,i])
           translate([-alignment_hole_diam/2 - cl, 0, 0]) scale([1,-1,1])
             cube([alignment_hole_diam + 2*cl,
                 ring_outer_diam/2 - alignment_hole_offset,
